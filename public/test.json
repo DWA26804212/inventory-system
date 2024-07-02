@@ -1,0 +1,59 @@
+[
+    {
+      "order_sn": "",
+      "products": [
+        {
+            "product_info": "",
+            "main_sku": "123123",
+            "quantity": 12,
+            "total": 123,
+            "barcode": "123123"
+        },
+        {
+            "product_info": "",
+            "main_sku": "123123",
+            "quantity": 12,
+            "total": 123,
+            "barcode": "123123"
+        }
+      ]
+    },
+    {
+      "order_sn": "",
+      "products": [
+        {
+            "product_info": "",
+            "main_sku": "123123",
+            "quantity": 12,
+            "total": 123,
+            "barcode": "123123"
+        },
+        {
+            "product_info": "",
+            "main_sku": "123123",
+            "quantity": 12,
+            "total": 123,
+            "barcode": "123123"
+        }
+      ]
+    },
+    {
+      "order_sn": "",
+      "products": [
+        {
+            "product_info": "",
+            "main_sku": "123123",
+            "quantity": 12,
+            "total": 123,
+            "barcode": "123123"
+        },
+        {
+            "product_info": "",
+            "main_sku": "123123",
+            "quantity": 12,
+            "total": 123,
+            "barcode": "123123"
+        }
+      ]
+    }
+  ]

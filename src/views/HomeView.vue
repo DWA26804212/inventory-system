@@ -1,18 +1,33 @@
 <template>
-  <div class="home">
-    <img alt="Vue logo" src="../assets/logo.png" />
-    <HelloWorld msg="Welcome to Your Vue.js + TypeScript App" />
+  <div>
+    <ImportExcel @file-imported="handleFileImported"/>
+    <BarcodeDisplay v-if="orders.length" :orders="orders"/>
+    <PdfExport v-if="orders.length" :orders="orders"/>
+    <BarcodeScanner v-if="orders.length" :orders="orders"/>
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue";
-import HelloWorld from "@/components/HelloWorld.vue"; // @ is an alias to /src
+<script setup lang="ts">
+import { ref } from 'vue';
+import ImportExcel from '@/components/ImportExcel.vue';
+import BarcodeDisplay from '@/components/BarcodeDisplay.vue';
+import PdfExport from '@/components/PdfExport.vue';
+import BarcodeScanner from '@/components/BarcodeScanner.vue';
 
-export default defineComponent({
-  name: "HomeView",
-  components: {
-    HelloWorld,
-  },
-});
+interface Order {
+  id: number;
+  name: string;
+  sku: string;
+}
+
+const orders = ref<Order[]>([]);
+
+function handleFileImported(data: any[]) {
+  console.log('handleFileImported', data);
+  orders.value = data.map((row, index) => ({
+    id: index,
+    name: row[0],
+    sku: row[1],
+  }));
+}
 </script>
