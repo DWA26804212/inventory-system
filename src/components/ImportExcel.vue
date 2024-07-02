@@ -8,25 +8,30 @@
     <div class="search-container">
       <el-row :gutter="20">
         <el-col :span="6">
-          <el-input v-model="searchOrderSn" placeholder="輸入單號" clearable></el-input>
+          <el-input v-model="searchOrderSn" placeholder="輸入單號" clearable @keyup.enter="scrollToOrder"></el-input>
         </el-col>
         <el-col :span="6">
           <el-button type="primary" @click="scrollToOrder">搜尋單號</el-button>
         </el-col>
+        <el-col :span="6">
+          <el-input v-model="scannedBarcode" placeholder="掃描商品條碼" clearable @keyup.enter="scanBarcode"></el-input>
+        </el-col>
+        <el-col :span="6">
+          <el-button type="primary" @click="scanBarcode">掃描條碼</el-button>
+        </el-col>
       </el-row>
     </div>
-    <el-table v-if="tableData.length" :data="tableData" :span-method="arraySpanMethod">
-      <el-table-column prop="order_sn" label="order_sn">
+    <el-table v-if="tableData.length" :data="tableData" :span-method="arraySpanMethod"
+      :row-class-name="tableRowClassName">
+      <el-table-column v-for="(header, index) in tableHeaders" :key="index" :prop="header" :label="header">
         <template v-slot="scope">
-          <div class="order-container">
+          <div class="order-container" v-if="header === 'order_sn'">
             <span :id="'order-' + scope.row.order_sn">{{ scope.row.order_sn }}</span>
             <img class="barcode-img" :src="converter.generateBarcodeBase64(scope.row.order_sn)" alt="barcode" />
           </div>
-        </template>
-      </el-table-column>
-      <el-table-column v-for="(header, index) in tableHeaders.slice(1)" :key="index" :prop="header" :label="header">
-        <template v-slot="scope">
-          <img class="barcode-img" v-if="header === 'barcode'" :src="scope.row[header]" alt="barcode" />
+          <img class="barcode-img" v-else-if="header === 'barcode'" :src="scope.row[header]" alt="barcode" />
+          <el-checkbox class="custom-checkbox" v-else-if="header === 'checked'" v-model="scope.row.checked" label="已確認"
+            size="large"></el-checkbox>
           <span v-else>{{ scope.row[header] }}</span>
         </template>
       </el-table-column>
@@ -38,11 +43,12 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref } from 'vue';
+import { ref } from 'vue';
 import * as XLSX from 'xlsx';
-import { ExcelToOrderConverter, Product } from '@/utils/ExcelToOrderConverter';
+import { ExcelToOrderConverter, Order, Product } from '@/utils/ExcelToOrderConverter';
 import html2canvas from 'html2canvas';
 import { saveAs } from 'file-saver';
+import { ElTable } from 'element-plus'
 
 const tableData = ref<Product[]>([]);
 const converter = new ExcelToOrderConverter();
@@ -51,6 +57,9 @@ const fileList = ref<any[]>([]);
 const searchOrderSn = ref<string>('');
 const importTimestamp = ref('');
 const originalFileName = ref('');
+const highlightedOrderSn = ref<string | null>(null);
+let orders: Order[] = [];
+const scannedBarcode = ref<string>('');
 
 function formatDate(date: Date): string {
   return date.toISOString().replace(/T/, ' ').replace(/:\d+\..+/, '');
@@ -65,10 +74,9 @@ function test() {
   const json = JSON.parse(testJson);
   console.log('testJson', json);
 
-  const testOrders = converter.convert(json);
-  tableData.value = testOrders.flatMap(order =>
+  orders = converter.convert(json);
+  tableData.value = orders.flatMap(order =>
     order.products.map((product, index) => ({
-      order_sn: order.order_sn,
       ...product,
       rowspan: index === 0 ? order.products.length : 0
     }))
@@ -94,10 +102,9 @@ function handleFileUpload(param: any) {
       console.log('ExcelData', jsonData);
 
       if (jsonData.length > 0) {
-        const orders = converter.convert(jsonData);
+        orders = converter.convert(jsonData);
         tableData.value = orders.flatMap(order =>
           order.products.map((product, index) => ({
-            order_sn: order.order_sn,
             ...product,
             rowspan: index === 0 ? order.products.length : 0
           }))
@@ -134,6 +141,7 @@ function scrollToOrder() {
   const orderElement = document.getElementById('order-' + searchOrderSn.value);
   if (orderElement) {
     orderElement.scrollIntoView({ behavior: 'smooth' });
+    highlightedOrderSn.value = searchOrderSn.value;
   } else {
     console.error('找不到該單號的資料');
   }
@@ -149,6 +157,25 @@ async function takeScreenshot() {
     saveAs(imgData, fileName);
   }
 }
+
+function tableRowClassName({ row }: any) {
+  return row.order_sn === highlightedOrderSn.value ? 'highlighted-row' : '';
+}
+
+function scanBarcode() {
+  const ordersFromTableData = tableData.value.filter(product => product.order_sn === highlightedOrderSn.value);
+
+  if (ordersFromTableData.length === 0) {
+    console.error('找不到該條碼的訂單');
+    return;
+  }
+
+  ordersFromTableData.forEach(order => {
+    if (order.main_sku === scannedBarcode.value)
+      order.checked = true;
+  });
+}
+
 </script>
 
 <style scoped>
@@ -170,9 +197,53 @@ async function takeScreenshot() {
   margin-top: 20px;
 }
 
-.order-container{
+.order-container {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.el-table ::v-deep .highlighted-row {
+  background-color: rgb(122, 225, 157);
+}
+
+.el-table {
+  --el-table-row-hover-bg-color: transparent;
+}
+
+.el-checkbox {
+  position: relative;
+  text-align: center;
+  background-color: #fff;
+  border-radius: 2px;
+
+}
+
+.el-checkbox.is-checked {
+  color: #1890ff;
+  border: 1px solid #1890ff;
+}
+
+.is-checked:before {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  border: 7px solid #1890ff;
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+}
+
+.is-checked:after {
+  content: '';
+  width: 1px;
+  height: 3px;
+  position: absolute;
+  right: 1px;
+  top: 0;
+  border: 2px solid #fff;
+  border-top-color: transparent;
+  border-left-color: transparent;
+  transform: rotate(45deg);
 }
 </style>

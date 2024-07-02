@@ -1,11 +1,13 @@
 import JsBarcode from 'jsbarcode';
 
 export interface Product {
+    order_sn: string;
   product_info: string;
   main_sku: string;
   quantity: number;
   total: string;
   barcode: string;
+  checked: boolean;
 }
 
 export interface Order {
@@ -27,7 +29,7 @@ export class ExcelToOrderConverter {
     jsonData.slice(1).forEach((row: any) => {
       const order_sn = row[findHeaderIndex('order_sn')] || '';
       const product_info = row[findHeaderIndex('product_info')] || '';
-      const products = this.parseProducts(product_info);
+      const products = this.parseProducts(order_sn, product_info);
 
       if (!orderMap.has(order_sn)) {
         orderMap.set(order_sn, []);
@@ -45,7 +47,7 @@ export class ExcelToOrderConverter {
     return orders;
   }
 
-  public parseProducts(product_info: string): Product[] {
+  public parseProducts(order_sn: string, product_info: string): Product[] {
     return product_info.split('\r\n').map((info: string) => {
       const main_sku = this.extractMainSku(info);
       const quantity = this.extractQuantity(info);
@@ -54,17 +56,19 @@ export class ExcelToOrderConverter {
       const barcode = this.generateBarcodeBase64(main_sku);
 
       return {
+        order_sn: order_sn,
         product_info: info,
         main_sku,
         quantity,
         total,
         barcode,
+        checked: false,
       };
     });
   }
 
   public getTableHeaders(): string[] {
-    return ['order_sn', ...Object.keys(this.parseProducts('')[0])] as string[];
+    return Object.keys(this.parseProducts('', '')[0]);
   }
 
   private extractMainSku(info: string): string {
