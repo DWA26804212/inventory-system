@@ -26,7 +26,7 @@
   </template>
   
   <script setup lang="ts">
-  import { onMounted } from 'vue';
+  import { onMounted, ref } from 'vue';
   import JsBarcode from 'jsbarcode';
   import html2canvas from 'html2canvas';
   import jsPDF from 'jspdf';
@@ -36,11 +36,29 @@
     name: string;
     sku: string;
   }
-  
-  const props = defineProps<{ orders: Order[] }>();
-  
+  // 虛擬數據
+  const orders = ref<Order[]>([
+    { id: 1, name: '商品一', sku: '123456789012' },
+    { id: 2, name: '商品二', sku: '987654321098' },
+    { id: 3, name: '商品三', sku: '123123123123' },
+    { id: 1, name: '商品一', sku: '123456789012' },
+    { id: 2, name: '商品二', sku: '987654321098' },
+    { id: 3, name: '商品三', sku: '123123123123' },
+    { id: 1, name: '商品一', sku: '123456789012' },
+    { id: 2, name: '商品二', sku: '987654321098' },
+    { id: 3, name: '商品三', sku: '123123123123' },
+    { id: 1, name: '商品一', sku: '123456789012' },
+    { id: 2, name: '商品二', sku: '987654321098' },
+    { id: 3, name: '商品三', sku: '123123123123' },
+    { id: 1, name: '商品一', sku: '123456789012' },
+    { id: 2, name: '商品二', sku: '987654321098' },
+    { id: 3, name: '商品三', sku: '123123123123' },
+    { id: 1, name: '商品一', sku: '123456789012' },
+    { id: 2, name: '商品二', sku: '987654321098' },
+    { id: 3, name: '商品三', sku: '123123123123' },
+  ]);
   onMounted(() => {
-    props.orders.forEach(order => {
+    orders.value.forEach(order => {
       JsBarcode(`#pdfBarcode${order.id}`, order.sku, {
         format: 'CODE128',
       });

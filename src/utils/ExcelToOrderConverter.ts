@@ -1,13 +1,18 @@
+import { TableHeaders } from '@/enum/TableHeaders';
 import JsBarcode from 'jsbarcode';
 
 export interface Product {
-    order_sn: string;
+  order_sn: string;
+  order_barcode: string;
   product_info: string;
   main_sku: string;
   quantity: number;
   total: string;
-  barcode: string;
+  sku_barcode: string;
   checked: boolean;
+  productName: string;
+  optionName: string;
+  optionSku: string;
 }
 
 export interface Order {
@@ -49,50 +54,81 @@ export class ExcelToOrderConverter {
 
   public parseProducts(order_sn: string, product_info: string): Product[] {
     return product_info.split('\r\n').map((info: string) => {
+      const order_barcode = this.generateBarcodeBase64(order_sn);
       const main_sku = this.extractMainSku(info);
+      const sku_barcode = this.generateBarcodeBase64(main_sku);
       const quantity = this.extractQuantity(info);
       const price = this.extractPrice(info);
       const total = `$ ${quantity * price}`;
-      const barcode = this.generateBarcodeBase64(main_sku);
+      const productName = this.extractProductName(info);
+      const optionName = this.extractOptionName(info);
+      const optionSku = this.extractOptionSku(info);
+
 
       return {
-        order_sn: order_sn,
+        order_sn,
+        order_barcode: order_barcode,
         product_info: info,
         main_sku,
         quantity,
         total,
-        barcode,
+        sku_barcode: sku_barcode,
         checked: false,
+        productName,
+        optionName,
+        optionSku
       };
     });
   }
 
-  public getTableHeaders(): string[] {
-    return Object.keys(this.parseProducts('', '')[0]);
+  public getTableHeaders(): TableHeaders[] {
+    return [
+      TableHeaders.order_sn,
+      TableHeaders.product_info,
+      TableHeaders.main_sku,
+      TableHeaders.quantity,
+      TableHeaders.total,
+      TableHeaders.checked
+    ];
   }
 
-  private extractMainSku(info: string): string {
+  public extractMainSku(info: string): string {
     const match = info.match(/商品選項貨號.*?(\d+)/);
     return match ? match[1] : '';
-}
+  }
 
-  private extractQuantity(info: string): number {
+  public extractQuantity(info: string): number {
     const match = info.match(/數量:\s*(\d+)/);
     return match ? parseInt(match[1], 10) : 0;
   }
 
-  private extractPrice(info: string): number {
+  public extractPrice(info: string): number {
     const match = info.match(/價格:\s*\$?\s*(\d+)/);
     return match ? parseInt(match[1], 10) : 0;
   }
 
-  public generateBarcodeBase64(text: string): string {
+  public extractProductName(info: string): string {
+    const match = info.match(/商品名稱:\s*([^;]+)/);
+    return match ? match[1] : '';
+  }
+  
+  public extractOptionName(info: string): string {
+    const match = info.match(/商品選項名稱:\s*([^;]+)/);
+    return match ? match[1] : '';
+  }
+
+  public extractOptionSku(info: string): string {
+    const match = info.match(/商品選項貨號:\s*([^;]+)/);
+    return match ? match[1].trim() : '';
+  }
+
+  public generateBarcodeBase64(text: string, displayValue = false): string {
     if (!text) {
       return ''; // 如果文本为空，返回空字符串
     }
     const canvas = document.createElement('canvas');
     try {
-      JsBarcode(canvas, text, { format: 'CODE128' });
+      JsBarcode(canvas, text, { format: 'CODE128', displayValue: displayValue });
       return canvas.toDataURL('image/png');
     } catch (error) {
       console.error('Error generating barcode:', error);
