@@ -6,20 +6,28 @@
       <div class="el-upload__text">將文件拖到此處，或<em>點擊上傳</em></div>
     </el-upload>
     <div class="search-container">
-      <el-row :gutter="20">
-        <el-col :span="6">
-          <el-input v-model="searchOrderSn" placeholder="輸入單號" clearable @keyup.enter="scrollToOrder"></el-input>
-        </el-col>
-        <el-col :span="6">
-          <el-button type="primary" @click="scrollToOrder">搜尋單號</el-button>
-        </el-col>
-        <el-col :span="6">
-          <el-input v-model="scannedBarcode" placeholder="掃描商品條碼" clearable @keyup.enter="scanBarcode"></el-input>
-        </el-col>
-        <el-col :span="6">
-          <el-button type="primary" @click="scanBarcode">掃描條碼</el-button>
-        </el-col>
-      </el-row>
+      <el-form :model="ruleForm" :rules="rules" ref="ruleFormRef">
+        <el-form-item>
+          <el-col :span="6">
+            <el-form-item class="p-2" prop="orderSn">
+              <el-input v-model="ruleForm.orderSn" placeholder="輸入單號" clearable
+                @keyup.enter="checkField('orderSn')"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-button type="primary" @click="checkField('orderSn')">搜尋單號</el-button>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item class="p-2" prop="barcode">
+              <el-input v-model="ruleForm.barcode" placeholder="掃描商品條碼" clearable
+                @keyup.enter="checkField('barcode')"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-button type="primary" @click="checkField('barcode')">掃描條碼</el-button>
+          </el-col>
+        </el-form-item>
+      </el-form>
     </div>
     <el-table v-if="tableData.length" :data="tableData" :span-method="arraySpanMethod"
       :row-class-name="tableRowClassName">
@@ -30,7 +38,7 @@
             <img class="barcode-img" :src="scope.row.order_barcode" alt="order_barcode" />
           </div>
           <div class="sku-container" v-else-if="header === TableHeaders.main_sku">
-            <span :id="'sku-' + scope.row.main_sku">{{ scope.row.main_sku }}</span>
+            <span :id="'sku-' + scope.row.order_sn + scope.row.main_sku">{{ scope.row.main_sku }}</span>
             <img class="barcode-img" :src="scope.row.sku_barcode" alt="sku_barcode" />
           </div>
           <div class="custom-checkbox" v-else-if="header === TableHeaders.checked">
@@ -48,33 +56,93 @@
       <el-button type="primary" @click="printPage">下載PDF</el-button>
     </div>
   </div>
-  
-  <PdfExport :orders="orders" v-show="displayPdfContent"/>
+
+  <PdfExport :orders="orders" v-show="displayPdfContent" />
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { reactive, ref } from 'vue';
 import * as XLSX from 'xlsx';
 import { ExcelToOrderConverter, Order, Product } from '@/utils/ExcelToOrderConverter';
 import html2canvas from 'html2canvas';
 import { saveAs } from 'file-saver';
-import { ElTable } from 'element-plus';
+import { ElMessage, ElTable, FormInstance, FormRules } from 'element-plus';
 import { jsPDF } from 'jspdf';
 import { TableHeaders } from '@/enum/TableHeaders';
 import PdfExport from '@/components/PdfExport.vue';
+
+interface RuleForm {
+  orderSn: string
+  barcode: string
+}
 
 const tableData = ref<Product[]>([]);
 const converter = new ExcelToOrderConverter();
 const tableHeaders = ref<TableHeaders[]>(converter.getTableHeaders());
 const fileList = ref<any[]>([]);
-const searchOrderSn = ref<string>('');
 const importTimestamp = ref('');
 const originalFileName = ref('');
 const highlightedOrderSn = ref<string | null>(null);
 let orders: Order[] = [];
-const scannedBarcode = ref<string>('');
 const displayMainView = ref(true);
 const displayPdfContent = ref(false);
+let isScanning = ref<number | null>(null);
+
+const ruleFormRef = ref<FormInstance>()
+const ruleForm = reactive<RuleForm>({
+  orderSn: '',
+  barcode: ''
+})
+
+const rules = reactive<FormRules<RuleForm>>({
+  orderSn: [
+    { validator: scrollToOrder, trigger: 'blur' }
+  ],
+  barcode: [
+    { validator: scanBarcode, trigger: 'blur' }
+  ]
+});
+
+function scrollToOrder(rule: any, value: any, callback: any) {
+
+  console.log('searchOrderSn', value);
+  const orderElement = document.getElementById('order-' + value);
+  if (orderElement) {
+    setTimeout(() => {
+      orderElement.scrollIntoView({ behavior: 'smooth' });
+      highlightedOrderSn.value = value;
+      callback();
+    }, 10);
+  } else {
+    highlightedOrderSn.value = '';
+    console.error('找不到該單號的資料');
+    callback(new Error('找不到該單號的資料'))
+  }
+}
+
+function scanBarcode(rule: any, value: any, callback: any) {
+  console.log('scanBarcode', value);
+  const ordersFromTableData = tableData.value.filter(product => product.order_sn === highlightedOrderSn.value?.trim());
+  
+  if (ordersFromTableData.some(order => order.main_sku === value)) {
+    setTimeout(() => {
+      const skuElement = document.getElementById('sku-' + highlightedOrderSn.value + value);
+      skuElement?.scrollIntoView({ behavior: 'smooth' });
+      ordersFromTableData.forEach(order => {
+        if (order.main_sku === value) order.checked = true;
+      });
+      callback();
+    }, 10);
+
+  } else {
+    console.error('找不到該條碼的訂單');
+    return callback(new Error('找不到該條碼的訂單'));
+  }
+}
+
+function checkField(field: string) {
+  ruleFormRef.value?.validateField(field);
+}
 
 function formatDate(date: Date): string {
   return date.toISOString().replace(/T/, ' ').replace(/:\d+\..+/, '');
@@ -152,16 +220,6 @@ function arraySpanMethod({ row, column, rowIndex, columnIndex }: any) {
   }
 }
 
-function scrollToOrder() {
-  const orderElement = document.getElementById('order-' + searchOrderSn.value);
-  if (orderElement) {
-    orderElement.scrollIntoView({ behavior: 'smooth' });
-    highlightedOrderSn.value = searchOrderSn.value;
-  } else {
-    console.error('找不到該單號的資料');
-  }
-}
-
 async function takeScreenshot() {
   const element = document.querySelector('.el-table') as HTMLElement;
   if (element) {
@@ -175,20 +233,6 @@ async function takeScreenshot() {
 
 function tableRowClassName({ row }: any) {
   return row.order_sn === highlightedOrderSn.value ? 'highlighted-row' : '';
-}
-
-function scanBarcode() {
-  const ordersFromTableData = tableData.value.filter(product => product.order_sn === highlightedOrderSn.value);
-
-  if (ordersFromTableData.length === 0) {
-    console.error('找不到該條碼的訂單');
-    return;
-  }
-
-  ordersFromTableData.forEach(order => {
-    if (order.main_sku === scannedBarcode.value)
-      order.checked = true;
-  });
 }
 
 async function downloadPDF() {
@@ -305,6 +349,21 @@ const printPage = () => {
   }, 100);
 };
 
+function handleInput(event: Event) {
+  const inputElement = event.target as HTMLInputElement;
+
+  // Check if input is being updated rapidly (indicative of scanning)
+  if (isScanning.value !== null) {
+    clearTimeout(isScanning.value);
+  }
+
+  isScanning.value = window.setTimeout(() => {
+    // Reset scanning flag
+    isScanning.value = null;
+    // Do something after the scan is finished
+  }, 300);
+}
+
 </script>
 
 <style scoped>
@@ -390,5 +449,4 @@ const printPage = () => {
   /* 调整标签的字体大小 */
   color: #666;
 }
-
 </style>
