@@ -5,7 +5,7 @@
       <img :src="order.products[0]?.order_barcode" alt="Order Barcode" class="order-barcode" />
       <table class="order-table" border="1">
         <thead>
-          <tr>
+          <tr class="text-center">
             <th>#</th>
             <th>主商品貨號</th>
             <th>商品名稱</th>
@@ -16,7 +16,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(product, idx) in order.products" :key="idx">
+          <tr class="eachItem" v-for="(product, idx) in order.products" :key="idx">
             <td class="text-center">{{ idx + 1 }}</td>
             <td>
               {{ product.main_sku }}
@@ -72,7 +72,7 @@ async function exportPdf() {
 <style scoped>
 
 /* #pdfContent {
-  font-size: 0.6em;
+  font-size: 0.8em;
 } */
 
 .order-barcode {
@@ -107,6 +107,10 @@ async function exportPdf() {
 
   .order-container + .order-container {
     page-break-before: always; /* 在每个订单容器前强制分页 */
+  }
+
+  .eachItem {
+    page-break-inside: avoid;
   }
 }
 </style>

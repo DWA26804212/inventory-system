@@ -8,30 +8,36 @@
     <div class="search-container">
       <el-form :model="ruleForm" :rules="rules" ref="ruleFormRef">
         <el-form-item>
-          <el-col :span="6">
+          <el-col :span="5" >
             <el-form-item class="p-2" prop="orderSn">
               <el-input v-model="ruleForm.orderSn" placeholder="輸入單號" clearable
                 @keyup.enter="checkField('orderSn')"></el-input>
             </el-form-item>
           </el-col>
-          <el-col :span="6">
+          <el-col :span="2" class="button-col">
             <el-button type="primary" @click="checkField('orderSn')">搜尋單號</el-button>
           </el-col>
-          <el-col :span="6">
+          <el-col :span="5" class="p-2">
+            <el-input v-model="orderSnDisplay" :disabled="true"></el-input>
+          </el-col>
+          <el-col :span="5">
             <el-form-item class="p-2" prop="barcode">
-              <el-input v-model="ruleForm.barcode" placeholder="掃描商品條碼" clearable
+              <el-input ref="barcodeInputRef" v-model="ruleForm.barcode" placeholder="掃描商品條碼" clearable
                 @keyup.enter="checkField('barcode')"></el-input>
             </el-form-item>
           </el-col>
-          <el-col :span="6">
+          <el-col :span="2" class="button-col">
             <el-button type="primary" @click="checkField('barcode')">掃描條碼</el-button>
+          </el-col>
+          <el-col :span="5" class="p-2">
+            <el-input v-model="barcodeDisplay" :disabled="true"></el-input>
           </el-col>
         </el-form-item>
       </el-form>
     </div>
-    <el-table v-if="tableData.length" :data="tableData" :span-method="arraySpanMethod"
+    <el-table v-if="tableData.length" :data="tableData" :span-method="arraySpanMethod" table-layout="auto"
       :row-class-name="tableRowClassName">
-      <el-table-column v-for="(header, index) in tableHeaders" :key="index" :prop="header" :label="header">
+      <el-table-column v-for="(header, index) in tableHeaders" :key="index" :prop="header" :label="header" min-width="80">
         <template v-slot="scope">
           <div class="order-container" v-if="header === TableHeaders.order_sn">
             <span :id="'order-' + scope.row.order_sn">{{ scope.row.order_sn }}</span>
@@ -41,19 +47,33 @@
             <span :id="'sku-' + scope.row.order_sn + scope.row.main_sku">{{ scope.row.main_sku }}</span>
             <img class="barcode-img" :src="scope.row.sku_barcode" alt="sku_barcode" />
           </div>
-          <div class="custom-checkbox" v-else-if="header === TableHeaders.checked">
+          <div class="text-center quantity p-2" v-else-if="header === TableHeaders.quantity">
+            {{ scope.row.quantity }}
+          </div>
+          <div class="text-center p-2" v-else-if="header === TableHeaders.total">
+            {{ scope.row.total }}
+          </div>
+          <div class="custom-checkbox text-center p-2" v-else-if="header === TableHeaders.checked">
             <input type="checkbox" :id="'checkbox-' + scope.row.main_sku + '-' + index" v-model="scope.row.checked" />
             <label :for="'checkbox-' + scope.row.main_sku + '-' + index">已確認</label>
           </div>
-
           <span v-else>{{ scope.row[TableHeaders.getStatusKeyByValue(header) ?? ''] }}</span>
         </template>
       </el-table-column>
     </el-table>
-    <div class="screenshot-container">
+    <div class="button-container">
       <el-button type="primary" @click="takeScreenshot">截圖存檔</el-button>
       <!-- <el-button type="primary" @click="downloadPDF">下載PDF</el-button> -->
       <el-button type="primary" @click="printPage">下載PDF</el-button>
+      <el-button type="primary" @click="checkAllOrder">檢查未完成之訂單</el-button>
+    </div>
+    <div v-if="incompleteOrders.length" class="incomplete-orders" ref="incompleteOrdersRef">
+      <h3>未完成之訂單號:</h3>
+      <ul>
+        <li v-for="orderSn in incompleteOrders" :key="orderSn" @click="scrollToOrder(null, orderSn, () => {})">
+          <a href="javascript:void(0)">{{ orderSn }}</a>
+        </li>
+      </ul>
     </div>
   </div>
 
@@ -86,7 +106,11 @@ const highlightedOrderSn = ref<string | null>(null);
 let orders: Order[] = [];
 const displayMainView = ref(true);
 const displayPdfContent = ref(false);
-let isScanning = ref<number | null>(null);
+const incompleteOrders = ref<string[]>([]);
+const incompleteOrdersRef = ref<HTMLElement | null>(null);
+const orderSnDisplay = ref('');
+const barcodeDisplay = ref('');
+const barcodeInputRef = ref<HTMLElement | null>(null);
 
 const ruleFormRef = ref<FormInstance>()
 const ruleForm = reactive<RuleForm>({
@@ -96,21 +120,25 @@ const ruleForm = reactive<RuleForm>({
 
 const rules = reactive<FormRules<RuleForm>>({
   orderSn: [
-    { validator: scrollToOrder, trigger: 'blur' }
+    { validator: scrollToOrder, trigger: 'submit' }
   ],
   barcode: [
-    { validator: scanBarcode, trigger: 'blur' }
+    { validator: scanBarcode, trigger: 'submit' }
   ]
 });
 
 function scrollToOrder(rule: any, value: any, callback: any) {
-
   console.log('searchOrderSn', value);
+  orderSnDisplay.value = value;
+  ruleForm.orderSn = '';
+
   const orderElement = document.getElementById('order-' + value);
   if (orderElement) {
     setTimeout(() => {
       orderElement.scrollIntoView({ behavior: 'smooth' });
       highlightedOrderSn.value = value;
+      // 聚焦掃描商品條碼的輸入欄位
+      barcodeInputRef.value?.focus();
       callback();
     }, 10);
   } else {
@@ -122,6 +150,9 @@ function scrollToOrder(rule: any, value: any, callback: any) {
 
 function scanBarcode(rule: any, value: any, callback: any) {
   console.log('scanBarcode', value);
+  barcodeDisplay.value = value;
+  ruleForm.barcode = '';
+
   const ordersFromTableData = tableData.value.filter(product => product.order_sn === highlightedOrderSn.value?.trim());
   
   if (ordersFromTableData.some(order => order.main_sku === value)) {
@@ -141,6 +172,7 @@ function scanBarcode(rule: any, value: any, callback: any) {
 }
 
 function checkField(field: string) {
+  console.log('checkField', field);
   ruleFormRef.value?.validateField(field);
 }
 
@@ -349,52 +381,81 @@ const printPage = () => {
   }, 100);
 };
 
-function handleInput(event: Event) {
-  const inputElement = event.target as HTMLInputElement;
+function checkAllOrder() {
+  incompleteOrders.value = []; // 清空之前的未完成訂單
 
-  // Check if input is being updated rapidly (indicative of scanning)
-  if (isScanning.value !== null) {
-    clearTimeout(isScanning.value);
+  // 遍歷所有訂單，檢查是否有未完成的
+  const uniqueOrderSn = new Set<string>();
+  tableData.value.forEach(product => {
+    if (!product.checked) {
+      uniqueOrderSn.add(product.order_sn);
+    }
+  });
+
+  // 將未完成訂單號保存到 incompleteOrders
+  incompleteOrders.value = Array.from(uniqueOrderSn);
+
+  // 若有未完成之訂單號，滑動到顯示訂單號的地方
+  if (incompleteOrders.value.length > 0) {
+    setTimeout(() => {
+      console.log('incompleteOrders', incompleteOrders.value);
+      const incompleteOrderElement = incompleteOrdersRef.value;
+      if (incompleteOrderElement) {
+        incompleteOrderElement.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
+  } else {
+    // 若無未完成之訂單，顯示所有訂單已確認
+    ElMessage({
+      message: '所有訂單已確認',
+      type: 'success',
+    });
   }
-
-  isScanning.value = window.setTimeout(() => {
-    // Reset scanning flag
-    isScanning.value = null;
-    // Do something after the scan is finished
-  }, 300);
 }
+
 
 </script>
 
 <style scoped>
 .upload-demo {
-  margin-bottom: 20px;
+  margin-top: 53px;
 }
 
 .search-container {
-  margin-bottom: 20px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background-color: white;
+  z-index: 1000;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding-top: 10px;
 }
 
 .barcode-img {
-  max-width: 200px;
+  max-width: 250px;
   width: 100%;
   height: auto;
 }
 
-.screenshot-container {
-  margin-top: 20px;
+.button-container {
+  margin: 20px;
 }
 
 .order-container {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  justify-content: center;
+  align-items: center;
 }
 
 .sku-container {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  justify-content: center;
+  align-items: center;
 }
 
 .el-table ::v-deep .highlighted-row {
@@ -449,4 +510,54 @@ function handleInput(event: Event) {
   /* 调整标签的字体大小 */
   color: #666;
 }
+
+.incomplete-orders {
+  margin-top: 20px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+}
+
+.incomplete-orders h3 {
+  margin: 0 0 10px;
+  font-size: 18px;
+  color: #333;
+}
+
+.incomplete-orders ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.incomplete-orders li {
+  margin: 5px 0;
+}
+
+.incomplete-orders li a {
+  color: #409EFF;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.incomplete-orders li a:hover {
+  text-decoration: underline;
+}
+
+.button-col {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.text-center {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.quantity {
+  min-width: 30px;
+}
+
 </style>
