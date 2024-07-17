@@ -30,7 +30,7 @@
           </tr>
         </tbody>
       </table>
-      <p>買家備註:</p>
+      <!-- <p>買家備註:</p> -->
     </div>
   </div>
 </template>
