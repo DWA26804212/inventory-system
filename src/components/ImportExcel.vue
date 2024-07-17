@@ -10,7 +10,7 @@
         <el-form-item>
           <el-col :span="5" >
             <el-form-item class="p-2" prop="orderSn">
-              <el-input v-model="ruleForm.orderSn" placeholder="輸入單號" clearable
+              <el-input v-model="ruleForm.orderSn" placeholder="輸入訂單編號" clearable
                 @keyup.enter="checkField('orderSn')"></el-input>
             </el-form-item>
           </el-col>
@@ -22,12 +22,12 @@
           </el-col>
           <el-col :span="5">
             <el-form-item class="p-2" prop="barcode">
-              <el-input ref="barcodeInputRef" v-model="ruleForm.barcode" placeholder="掃描商品條碼" clearable
+              <el-input ref="barcodeInputRef" v-model="ruleForm.barcode" placeholder="輸入商品貨號" clearable
                 @keyup.enter="checkField('barcode')"></el-input>
             </el-form-item>
           </el-col>
           <el-col :span="2" class="button-col">
-            <el-button type="primary" @click="checkField('barcode')">掃描條碼</el-button>
+            <el-button type="primary" @click="checkField('barcode')">搜尋貨號</el-button>
           </el-col>
           <el-col :span="5" class="p-2">
             <el-input v-model="barcodeDisplay" :disabled="true"></el-input>
@@ -143,8 +143,9 @@ function scrollToOrder(rule: any, value: any, callback: any) {
     }, 10);
   } else {
     highlightedOrderSn.value = '';
-    console.error('找不到該單號的資料');
-    callback(new Error('找不到該單號的資料'))
+    const msg = '查無此訂單編號';
+    console.error(msg);
+    callback(new Error(msg))
   }
 }
 
@@ -166,8 +167,9 @@ function scanBarcode(rule: any, value: any, callback: any) {
     }, 10);
 
   } else {
-    console.error('找不到該條碼的訂單');
-    return callback(new Error('找不到該條碼的訂單'));
+    const msg = '查無此商品貨號';
+    console.error(msg);
+    return callback(new Error(msg));
   }
 }
 
@@ -381,6 +383,14 @@ const printPage = () => {
 
 function checkAllOrder() {
   incompleteOrders.value = []; // 清空之前的未完成訂單
+
+  if (tableData.value.length === 0) {
+    ElMessage({
+      message: '無訂單資料',
+      type: 'warning',
+    });
+    return;
+  }
 
   // 遍歷所有訂單，檢查是否有未完成的
   const uniqueOrderSn = new Set<string>();
