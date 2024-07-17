@@ -11,4 +11,5 @@ export namespace TableHeaders {
     export function getStatusKeyByValue(value: string): string | undefined {
         return Object.keys(TableHeaders).find(key => TableHeaders[key as keyof typeof TableHeaders] === value);
     }
+    
 }
