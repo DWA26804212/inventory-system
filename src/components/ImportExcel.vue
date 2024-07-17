@@ -8,7 +8,7 @@
     <div class="search-container">
       <el-form :model="ruleForm" :rules="rules" ref="ruleFormRef">
         <el-form-item>
-          <el-col :span="5" >
+          <el-col :span="5">
             <el-form-item class="p-2" prop="orderSn">
               <el-input v-model="ruleForm.orderSn" placeholder="輸入訂單編號" clearable
                 @keyup.enter="checkField('orderSn')"></el-input>
@@ -37,7 +37,8 @@
     </div>
     <el-table v-if="tableData.length" :data="tableData" :span-method="arraySpanMethod" table-layout="auto"
       :row-class-name="tableRowClassName">
-      <el-table-column v-for="(header, index) in tableHeaders" :key="index" :prop="header" :label="header" min-width="80">
+      <el-table-column v-for="(header, index) in tableHeaders" :key="index" :prop="header" :label="header"
+        min-width="80">
         <template v-slot="scope">
           <div class="order-container" v-if="header === TableHeaders.order_sn">
             <span :id="'order-' + scope.row.order_sn">{{ scope.row.order_sn }}</span>
@@ -54,8 +55,12 @@
             {{ scope.row.total }}
           </div>
           <div class="custom-checkbox text-center p-2" v-else-if="header === TableHeaders.checked">
-            <input type="checkbox" :id="'checkbox-' + scope.row.main_sku + '-' + index" v-model="scope.row.checked" />
-            <label :for="'checkbox-' + scope.row.main_sku + '-' + index">已確認</label>
+            <input type="checkbox" :id="'checkbox-' + scope.$index" v-model="scope.row.checked" />
+            <label :for="'checkbox-' + scope.$index">已確認</label>
+          </div>
+          <div class="text-center p-2" v-else-if="header === TableHeaders.quantityChecked">
+            <el-input v-model="scope.row.quantityChecked" type="number" @input="changeQuantityChecked(scope.row)"
+              :formatter="quantityCheckedFormatter" style="width: 80px" :id="'QCInput-' + scope.$index"></el-input>
           </div>
           <span v-else>{{ scope.row[TableHeaders.getStatusKeyByValue(header) ?? ''] }}</span>
         </template>
@@ -70,7 +75,7 @@
     <div v-if="incompleteOrders.length" class="incomplete-orders" ref="incompleteOrdersRef">
       <h3>未完成之訂單號:</h3>
       <ul>
-        <li v-for="orderSn in incompleteOrders" :key="orderSn" @click="scrollToOrder(null, orderSn, () => {})">
+        <li v-for="orderSn in incompleteOrders" :key="orderSn" @click="scrollToOrder(null, orderSn, () => { })">
           <a href="javascript:void(0)">{{ orderSn }}</a>
         </li>
       </ul>
@@ -155,13 +160,20 @@ function scanBarcode(rule: any, value: any, callback: any) {
   ruleForm.barcode = '';
 
   const ordersFromTableData = tableData.value.filter(product => product.order_sn === highlightedOrderSn.value?.trim());
-  
+
   if (ordersFromTableData.some(order => order.main_sku === value)) {
     setTimeout(() => {
       const skuElement = document.getElementById('sku-' + highlightedOrderSn.value + value);
       skuElement?.scrollIntoView({ behavior: 'smooth' });
       ordersFromTableData.forEach(order => {
-        if (order.main_sku === value) order.checked = true;
+        if (order.main_sku === value) {
+          order.quantityChecked = quantityCheckedFormatter(order.quantityChecked) + 1;
+          if (order.quantityChecked === order.quantity) {
+            order.checked = true;
+          } else {
+            order.checked = false;
+          }
+        }
       });
       callback();
     }, 10);
@@ -173,6 +185,15 @@ function scanBarcode(rule: any, value: any, callback: any) {
   }
 }
 
+function changeQuantityChecked(product: Product) {
+  const quantity = quantityCheckedFormatter(product.quantityChecked)
+  if (product.quantity === quantity) {
+    product.checked = true;
+  } else {
+    product.checked = false;
+  }
+}
+
 function checkField(field: string) {
   console.log('checkField', field);
   ruleFormRef.value?.validateField(field);
@@ -181,6 +202,8 @@ function checkField(field: string) {
 function formatDate(date: Date): string {
   return date.toISOString().replace(/T/, ' ').replace(/:\d+\..+/, '');
 }
+
+// test();
 
 function test() {
   console.log('test');
@@ -421,6 +444,11 @@ function checkAllOrder() {
   }
 }
 
+const quantityCheckedFormatter = (value: string | number) => {
+  // 將值轉換為數字型態，若為空值則回傳 0
+  const numberValue = Number(value);
+  return isNaN(numberValue) || value === '' ? 0 : numberValue;
+};
 
 </script>
 
@@ -567,5 +595,4 @@ function checkAllOrder() {
 .quantity {
   min-width: 30px;
 }
-
 </style>

@@ -4,7 +4,8 @@ export enum TableHeaders {
     main_sku = '主商品貨號',
     quantity = '數量',
     total = '金額',
-    checked = '確認'
+    checked = '確認',
+    quantityChecked = '確認數量'
 }
 
 export namespace TableHeaders {

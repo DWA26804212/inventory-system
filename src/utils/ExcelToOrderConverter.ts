@@ -13,6 +13,7 @@ export interface Product {
   productName: string;
   optionName: string;
   optionSku: string;
+  quantityChecked: number;
 }
 
 export interface Order {
@@ -76,7 +77,8 @@ export class ExcelToOrderConverter {
         checked: false,
         productName,
         optionName,
-        optionSku
+        optionSku,
+        quantityChecked: 0
       };
     });
   }
@@ -88,7 +90,8 @@ export class ExcelToOrderConverter {
       TableHeaders.main_sku,
       TableHeaders.quantity,
       TableHeaders.total,
-      TableHeaders.checked
+      TableHeaders.checked,
+      TableHeaders.quantityChecked
     ];
   }
 
