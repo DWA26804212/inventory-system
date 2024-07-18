@@ -33,7 +33,7 @@ export class ExcelToOrderConverter {
     const orderMap = new Map<string, Product[]>();
 
     jsonData.slice(1).forEach((row: any) => {
-      const order_sn = row[findHeaderIndex('order_sn')] || '';
+      const order_sn = row[findHeaderIndex('tracking_number')] || '';
       const product_info = row[findHeaderIndex('product_info')] || '';
       const products = this.parseProducts(order_sn, product_info);
 
@@ -106,9 +106,11 @@ export class ExcelToOrderConverter {
   }
 
   public extractPrice(info: string): number {
-    const match = info.match(/價格:\s*\$?\s*(\d+)/);
-    return match ? parseInt(match[1], 10) : 0;
-  }
+    // 更新正則表達式以支持逗號分隔的數字
+    const match = info.match(/價格:\s*\$?\s*([\d,]+)/);
+    // 移除數字中的逗號並解析為整數
+    return match ? parseInt(match[1].replace(/,/g, ''), 10) : 0;
+  }  
 
   public extractProductName(info: string): string {
     const match = info.match(/商品名稱:\s*([^;]+)/);

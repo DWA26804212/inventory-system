@@ -1,5 +1,5 @@
 export enum TableHeaders {
-    order_sn = '訂單編號',
+    order_sn = '寄件編號',
     product_info = '商品資訊',
     main_sku = '主商品貨號',
     quantity = '數量',
