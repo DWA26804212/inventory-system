@@ -224,7 +224,7 @@ function formatDate(date: Date): string {
   return date.toISOString().replace(/T/, ' ').replace(/:\d+\..+/, '');
 }
 
-test();
+// test();
 
 function test() {
   console.log('test');
