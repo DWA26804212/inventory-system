@@ -40,29 +40,31 @@
       <el-table-column v-for="(header, index) in tableHeaders" :key="index" :prop="header" :label="header"
         min-width="80">
         <template v-slot="scope">
-          <div class="order-container" v-if="header === TableHeaders.order_sn">
-            <span :id="'order-' + scope.row.order_sn">{{ scope.row.order_sn }}</span>
-            <img class="barcode-img" :src="scope.row.order_barcode" alt="order_barcode" />
+          <div class="text-xl">
+            <div class="order-container" v-if="header === TableHeaders.order_sn">
+              <span :id="'order-' + scope.row.order_sn">{{ scope.row.order_sn }}</span>
+              <img class="barcode-img" :src="scope.row.order_barcode" alt="order_barcode" />
+            </div>
+            <div class="sku-container" v-else-if="header === TableHeaders.main_sku">
+              <span :id="'sku-' + scope.row.order_sn + scope.row.main_sku">{{ scope.row.main_sku }}</span>
+              <img class="barcode-img" :src="scope.row.sku_barcode" alt="sku_barcode" />
+            </div>
+            <div class="text-center quantity p-2" v-else-if="header === TableHeaders.quantity">
+              {{ scope.row.quantity }}
+            </div>
+            <div class="text-center p-2" v-else-if="header === TableHeaders.total">
+              {{ scope.row.total }}
+            </div>
+            <div class="custom-checkbox text-center p-2" v-else-if="header === TableHeaders.checked">
+              <input type="checkbox" :id="'checkbox-' + scope.$index" v-model="scope.row.checked" />
+              <label :for="'checkbox-' + scope.$index">已確認</label>
+            </div>
+            <div class="text-center p-2" v-else-if="header === TableHeaders.quantityChecked">
+              <el-input v-model="scope.row.quantityChecked" @input="changeQuantityChecked(scope.row)"
+                :formatter="quantityCheckedFormatter" style="width: 80px" :id="'QCInput-' + scope.$index"></el-input>
+            </div>
+            <span v-else class="text-xl">{{ scope.row[TableHeaders.getStatusKeyByValue(header) ?? ''] }}</span>
           </div>
-          <div class="sku-container" v-else-if="header === TableHeaders.main_sku">
-            <span :id="'sku-' + scope.row.order_sn + scope.row.main_sku">{{ scope.row.main_sku }}</span>
-            <img class="barcode-img" :src="scope.row.sku_barcode" alt="sku_barcode" />
-          </div>
-          <div class="text-center quantity p-2" v-else-if="header === TableHeaders.quantity">
-            {{ scope.row.quantity }}
-          </div>
-          <div class="text-center p-2" v-else-if="header === TableHeaders.total">
-            {{ scope.row.total }}
-          </div>
-          <div class="custom-checkbox text-center p-2" v-else-if="header === TableHeaders.checked">
-            <input type="checkbox" :id="'checkbox-' + scope.$index" v-model="scope.row.checked" />
-            <label :for="'checkbox-' + scope.$index">已確認</label>
-          </div>
-          <div class="text-center p-2" v-else-if="header === TableHeaders.quantityChecked">
-            <el-input v-model="scope.row.quantityChecked" @input="changeQuantityChecked(scope.row)"
-              :formatter="quantityCheckedFormatter" style="width: 80px" :id="'QCInput-' + scope.$index"></el-input>
-          </div>
-          <span v-else>{{ scope.row[TableHeaders.getStatusKeyByValue(header) ?? ''] }}</span>
         </template>
       </el-table-column>
     </el-table>
@@ -107,7 +109,7 @@ const tableHeaders = ref<TableHeaders[]>(converter.getTableHeaders());
 const fileList = ref<any[]>([]);
 const importTimestamp = ref('');
 const originalFileName = ref('');
-const highlightedOrderSn = ref('');
+const highlightedOrderSn = ref(' ');
 let orders: Order[] = [];
 const displayMainView = ref(true);
 const displayPdfContent = ref(false);
